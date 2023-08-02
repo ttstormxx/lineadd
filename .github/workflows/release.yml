@@ -1,0 +1,73 @@
+name: Build and Release
+
+on:
+  release:
+    types:
+      - created
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.20
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Windows binary
+        run: go build ${{ github.repository }}.go
+
+      - name: Create ZIP file
+        run: |
+          mkdir zip
+          cp ${{ github.repository }}.exe zip/
+          cd zip
+          zip ${{ github.repository }}.zip ${{ github.repository }}.exe
+          mv ${{ github.repository }}.zip ../
+
+      - name: Rename ZIP file
+        run: mv ${{ github.repository }}.zip ${{ github.repository }}-windows-amd64.zip
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          files:
+            - ${{ github.repository }}-windows-amd64.zip
+
+  build-ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.20
+
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build Ubuntu binary
+        run: go build ${{ github.repository }}.go
+
+      - name: Create ZIP file
+        run: |
+          mkdir zip
+          cp ${{ github.repository }} zip/
+          cd zip
+          zip ${{ github.repository }}.zip ${{ github.repository }}-linux-amd64
+          mv ${{ github.repository }}-linux-amd64.zip ../
+
+      - name: Rename ZIP file
+        run: mv ${{ github.repository }}-linux-amd64.zip ${{ github.repository }}-linux-amd64.zip
+
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        with:
+          files:
+            - ${{ github.repository }}-linux-amd64.zip
