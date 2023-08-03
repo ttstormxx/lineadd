@@ -1,73 +1,34 @@
+#goreleaser from fscan project https://github.com/shadow1ng/fscan
 name: Build and Release
 
 on:
   release:
     types:
       - created
+permissions:
+ contents: write
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.20
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Build Windows binary
-        run: go build ${{ github.repository }}.go
-
-      - name: Create ZIP file
-        run: |
-          mkdir zip
-          cp ${{ github.repository }}.exe zip/
-          cd zip
-          zip ${{ github.repository }}.zip ${{ github.repository }}.exe
-          mv ${{ github.repository }}.zip ../
-
-      - name: Rename ZIP file
-        run: mv ${{ github.repository }}.zip ${{ github.repository }}-windows-amd64.zip
-
-      - name: Create release
-        uses: softprops/action-gh-release@v1
+    goreleaser:
+        runs-on: ubuntu-latest
+        steps:
+        - uses: actions/checkout@v3
+          with:
+            fetch-depth: 0
+        - run: git fetch --force --tags
+        - uses: actions/setup-go@v3
+          with:
+            go-version: '1.20.x'
+            cache: true
+        # More assembly might be required: Docker logins, GPG, etc. It all depends
+        # on your needs.
+        - run: go install mvdan.cc/garble@latest
+        - uses: goreleaser/goreleaser-action@v2
+          with:
+            # either 'goreleaser' (default) or 'goreleaser-pro':
+            distribution: goreleaser
+            version: latest
+            args: -f .github/conf/.goreleaser.yml
+            workdir: .
         env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          files:
-            - ${{ github.repository }}-windows-amd64.zip
-
-  build-ubuntu:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.20
-
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Build Ubuntu binary
-        run: go build ${{ github.repository }}.go
-
-      - name: Create ZIP file
-        run: |
-          mkdir zip
-          cp ${{ github.repository }} zip/
-          cd zip
-          zip ${{ github.repository }}.zip ${{ github.repository }}-linux-amd64
-          mv ${{ github.repository }}-linux-amd64.zip ../
-
-      - name: Rename ZIP file
-        run: mv ${{ github.repository }}-linux-amd64.zip ${{ github.repository }}-linux-amd64.zip
-
-      - name: Create release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
-        with:
-          files:
-            - ${{ github.repository }}-linux-amd64.zip
+            GITHUB_TOKEN: ${{ secrets.RELEASE_TOKEN }}
