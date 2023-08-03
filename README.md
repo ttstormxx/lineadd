@@ -41,6 +41,10 @@ go build lineadd.go
 
 ![Alt text](pics/image-1.png)
 
+#### 编辑配置文件 lineadd.yml
+配置文件可以自定义，即使所有字典txt文件都在同一目录下，也可以自由分类
+![Alt text](pics/example.png)
+
 #### 向某类字典新增行
 `echo 123123123|lineadd -a web`
 

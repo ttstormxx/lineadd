@@ -41,6 +41,11 @@ The root directory of the dictionary needs to be entered for the first run, and 
 
 ![Alt text](pics/image-1.png)
 
+
+#### Edit configuration file lineadd.yml
+The configuration file can be customized, even if all the dictionary text files are in the same directory, they can be freely categorized.
+![Alt text](pics/example.png)
+
 #### Add new lines to all dictionaries under a specific category.
 `echo 123123123|lineadd -a web`
 
