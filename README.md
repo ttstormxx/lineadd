@@ -32,6 +32,7 @@ go build lineadd.go
 -config 重新初始化(遍历字典根目录初始化配置文件)
 -base   字典根目录(用于在-config时设置BaseDir)
 -write  依据配置文件初始化字典根目录(-config时使用)
+-fresh  读取配置文件, 写入配置文件, 什么都没变, 适配新增的字典Type(-config时使用)
 -silent 安静模式 一个挂件
 ```
 ## 快速使用
@@ -45,10 +46,18 @@ go build lineadd.go
 配置文件可以自定义，即使所有字典txt文件都在同一目录下，也可以自由分类
 ![Alt text](pics/example.png)
 
-#### 向某类字典新增行
+#### 向web类字典新增行
 `echo 123123123|lineadd -a web`
 
 ![Alt text](pics/add.png)
+
+#### 特殊模式 省略 -a
+`echo 123123123|lineadd web`
+
+![Alt text](pics/special.png)
+
+#### 路径类字典(在配置文件中将type设置为path) 自动处理新行开头的/
+![Alt text](pics/leadingslash.png)
 
 #### 查看字典状态和别名
 `lineadd -t`
@@ -56,10 +65,10 @@ go build lineadd.go
 
 ## trick
 #### 数据输入模式
-支持文件读取、cmd输入、管道符输入、标准输入4种模式
+支持文件读取、cmd参数输入、管道符输入、cmd输入4种模式
 ![Alt text](pics/input.png)
 
-当文件读取、cmd输入、管道符输入均不存在时，启用标准输入
+当文件读取、cmd参数输入、管道符输入均不存在时，启用cmd输入
 ![Alt text](pics/stdin.png)
 
 
@@ -72,6 +81,7 @@ captcha: #类名
     path: #相对路径
     alias: #别名 列表 与字典名对应顺序
         - cap
+    type: #可使用 path 值将字典标记为路径类字典或置空
 ```
 
 #### 通过根目录自动设置配置文件

@@ -18,7 +18,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var version = "1.0"
+var version = "1.1"
 
 var banner = `
 _ _                      _     _ 
@@ -34,12 +34,23 @@ func showBanner() {
 }
 
 // * 配置文件解析
+// type Config struct {
+// 	BaseDir string `yaml:"baseDir"`
+// 	Items   map[string]struct {
+// 		Dicts []string `yaml:"dicts"`
+// 		Path  string   `yaml:"path"`
+// 		Alias []string `yaml:"alias"`
+// 	} `yaml:",inline"`
+// }
+
+// 增加字典类型type 专用于path类型处理
 type Config struct {
 	BaseDir string `yaml:"baseDir"`
 	Items   map[string]struct {
 		Dicts []string `yaml:"dicts"`
 		Path  string   `yaml:"path"`
 		Alias []string `yaml:"alias"`
+		Type  string   `yaml:"type"`
 	} `yaml:",inline"`
 }
 
@@ -84,6 +95,7 @@ var (
 	reconfig     bool     //重新初始化
 	firstrun     bool     //首次运行
 	write        bool     //依据配置文件想字典根目录写入配置的字典
+	fresh        bool     //读取配置文件，再将配置重新写入，适配新增的type
 
 	BaseDir         string   //字典根目录
 	BaseDirFromUser string   //用户-base输入的根目录
@@ -101,7 +113,7 @@ func ParseImplement() {
 }
 
 // 判断是否存在必备参数 模式是否唯一
-func ValidMode() {
+func ValidMode(config Config) {
 
 	num := 0
 	if len(add) > 0 {
@@ -141,15 +153,31 @@ func ValidMode() {
 	if num > 0 {
 		if len(BaseDirFromUser) > 0 {
 			fmt.Println("-base选项仅在-config时有效")
+			os.Exit(1)
 		}
 		if write {
 			fmt.Println("-write选项仅在-config时有效")
+			os.Exit(1)
+		}
+		if fresh {
+			fmt.Println("-fresh选项仅在-config时有效")
+			os.Exit(1)
 		}
 	}
 	if reconfig {
 		num++
-		if len(BaseDirFromUser) > 0 && write {
-			fmt.Println("-base选项和-write选项只能选一种")
+		count := 0
+		if len(BaseDirFromUser) > 0 {
+			count++
+		}
+		if write {
+			count++
+		}
+		if fresh {
+			count++
+		}
+		if count > 1 {
+			fmt.Println("-base选项和-write和-fresh选项只能选一种")
 			os.Exit(1)
 		}
 	}
@@ -158,9 +186,30 @@ func ValidMode() {
 		return
 	} else {
 		if num == 0 {
-			fmt.Println("请选择处理模式: add del count read backup stat query config")
-			flag.Usage()
-			os.Exit(1)
+			// 特殊模式 判断字典类是否存在，若存在则为加行模式
+			var configtypekeys []string
+			for k := range config.Items {
+				configtypekeys = append(configtypekeys, k)
+			}
+			for _, arg := range os.Args {
+				if contains(configtypekeys, arg) {
+					add = arg
+					num += 1
+					break
+				}
+			}
+			if num == 0 { //再次判断
+
+				fmt.Println("请选择处理模式: add del count read backup stat query config")
+				flag.Usage()
+				os.Exit(1)
+			} else {
+				// 特殊模式 需要自主解析输入的新行
+				ParamParseImp()
+			}
+			// fmt.Println("请选择处理模式: add del count read backup stat query config")
+			// flag.Usage()
+			// os.Exit(1)
 		} else if num > 1 {
 			fmt.Println("只能选择1种模式: add del count read backup stat query config")
 			os.Exit(1)
@@ -255,8 +304,38 @@ func usage() {
   -config 重新初始化(遍历字典根目录初始化配置文件)
   -base   字典根目录(用于在-config时设置BaseDir)
   -write  依据配置文件初始化字典根目录(-config时使用)
+  -fresh  读取配置文件, 写入配置文件, 什么都没变, 适配新增的字典Type(-config时使用)
   -silent 安静模式 一个挂件`
 	fmt.Println(usagetips)
+}
+
+func ParamParseImp() {
+	for i := 0; i < len(os.Args); i++ {
+		if os.Args[i] == "-l" {
+			if i+1 < len(os.Args) {
+				line = os.Args[i+1]
+			} else {
+				fmt.Println("flag needs an argument: -l")
+				os.Exit(1)
+			}
+			if len(line) > 0 {
+				lines = strings.Split(line, ",")
+				loginfo(strings.Join(lines, " "))
+			}
+		} else if os.Args[i] == "-f" {
+			if i+1 < len(os.Args) {
+				file = os.Args[i+1]
+			} else {
+				fmt.Println("flag needs an argument: -f")
+				os.Exit(1)
+			}
+
+		}
+	}
+	if len(os.Args) > 2 && len(line) == 0 && len(file) == 0 {
+		fmt.Println("特殊模式(add)只能使用 -l -f 选项")
+		os.Exit(1)
+	}
 }
 func FlagParse(config Config) {
 	flag.Usage = usage
@@ -273,15 +352,17 @@ func FlagParse(config Config) {
 	flag.BoolVar(&query, "q", false, "查询某行(单行数据)是否在字典中")
 	flag.BoolVar(&reconfig, "config", false, "重新初始化(遍历字典根目录初始化配置文件)")
 	flag.BoolVar(&write, "write", false, "依据配置文件初始化字典根目录(-config时使用)")
+	flag.BoolVar(&fresh, "fresh", false, "读取配置文件, 写入配置文件，什么都没变(-config时使用)")
 	flag.StringVar(&BaseDirFromUser, "base", "", "字典根目录(用于在-config时设置BaseDir)")
 	flag.Parse()
 
 	//有效性判断
-	ValidMode()
+	ValidMode(config)
 	ParamValid(config)
 
 	if len(line) > 0 {
 		lines = strings.Split(line, ",")
+		loginfo(strings.Join(lines, " "))
 	}
 
 }
@@ -569,7 +650,7 @@ func findIndex(arr []string, target string) *int {
 }
 
 // 输入数据处理
-func InputManage() []string {
+func InputManage(config Config) []string {
 	// 读取待处理行
 	var newlines []string
 	var newlinesfromfile []string
@@ -603,6 +684,15 @@ func InputManage() []string {
 	newlines = append(newlines, newlinesfromuserinput...)
 	// 去重
 	uniqlines = removeDuplicates(newlines)
+	if config.Items[category].Type == "path" {
+		// 对于路径类字典，去除新行开始的/
+		var tmplines []string
+		for _, x := range uniqlines {
+
+			tmplines = append(tmplines, strings.TrimPrefix(x, "/"))
+		}
+		uniqlines = tmplines
+	}
 	return uniqlines
 }
 
@@ -968,6 +1058,7 @@ func SetConfig(baseDir string) (*Config, error) {
 			Dicts []string `yaml:"dicts"`
 			Path  string   `yaml:"path"`
 			Alias []string `yaml:"alias"`
+			Type  string   `yaml:"type"`
 		}),
 	}
 
@@ -1002,6 +1093,7 @@ func SetConfig(baseDir string) (*Config, error) {
 				Dicts []string `yaml:"dicts"`
 				Path  string   `yaml:"path"`
 				Alias []string `yaml:"alias"`
+				Type  string   `yaml:"type"`
 			}{
 				Path: relPath,
 			}
@@ -1064,6 +1156,10 @@ func RECONFIGMODE(config Config) {
 		loginfo(fmt.Sprintf("即将使用输入的根目录初始化配置文件: %s", BaseDirFromUser))
 		BaseDir = BaseDirFromUser
 
+	} else if fresh {
+		loginfo("标准化配置文件, 适配字典Type值, 不要担心, 任何东西都没变")
+		writeConfig(&config)
+		return
 	} else {
 
 		loginfo(fmt.Sprintf("即将使用配置文件中的根目录初始化配置文件: %s", BaseDir))
@@ -1359,7 +1455,7 @@ func main() {
 	} else { //加减行模式
 		//待处理数据输入
 		loginfo("mode: " + optype)
-		newlines = InputManage()
+		newlines = InputManage(config)
 		if optype == "add" {
 			// loginfo("mode: " + optype)
 			loginfo("添加处理中")

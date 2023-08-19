@@ -32,6 +32,7 @@ go build lineadd.go
 -config Reinitialize (traverse dictionary root directory initialization configuration file)
 -base   Dictionary root directory (used to set BaseDir when -config)
 -write  Initialize the dictionary root directory according to the configuration file (used when -config)
+-fresh  Read configuration file, write configuration file, nothing has changed, adapt to the newly added dictionary type (used with -config)
 -silent quiet mode literaly no use
 ```
 ## Quick start
@@ -51,16 +52,23 @@ The configuration file can be customized, even if all the dictionary text files 
 
 ![Alt text](pics/add.png)
 
+#### special mode  omit -a
+`echo 123123123|lineadd web`
+![Alt text](pics/special.png)
+
+#### Path-based dictionary (set type as "path" in the configuration file), automatically handle leading "/" in new lines.
+![Alt text](pics/leadingslash.png)
+
 #### View the status and aliases of the dictionary.
 `lineadd -t`
 ![Alt text](pics/stat.png)
 
 ## trick
 #### Data Input Modes
-Supports four modes of data input: file reading, command line input, pipe input, and standard input.
+Supports four modes of data input: file reading, command line option input, pipe input, and command line input.
 ![Alt text](pics/input.png)
 
-If file reading, command line input, and pipe input are not available, enable standard input.
+If file reading, command line option input, and pipe input are not available, enable command line input.
 ![Alt text](pics/stdin.png)
 
 
@@ -73,6 +81,7 @@ captcha: #category
     path: #Relative Path
     alias: #Alias: List Corresponding to Dictionary Names in Order
         - cap
+    type: #Use the "path" value to designate the dictionary as a path-based dictionary or leave it empty.
 ```
 
 #### Automatically set the configuration file using the root directory.
